@@ -4,15 +4,20 @@ This repository contains a PID demo and a demo template for implementing PID con
 
 ## Usage
 
-Install `pygame` and `matplotlib` python packages. Then, run `pid.py`.
+Install packages from `requirements.txt`. Then, run `pid.py`.
+
+The template for implementing a PID controller is in `pid_template.py`.
 
 ## Changelog
 
 ### v1.1
+
 - Added comments and rearranged statements to be more intuitive
 
 ### v1.0
+
 - Added matplotlib chart to show errors
 
 ### v0.1
+
 - Initial script
