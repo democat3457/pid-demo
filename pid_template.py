@@ -1,13 +1,16 @@
-# PID Demo (Template) | v1.1
+# PID Demo (Template) | v1.2
 # Authored by Colin Wong
 # Requirements: pygame, matplotlib
 
 # This file serves as a demo template to implement a PID controller. The target of
-# PID control is a red circle that follows your cursor around the window. To fill
-# out the template, implement the lines labeled TODO in PIDController's calculate
-# method. Then, tune the PID controllers you implemented by changing the arguments
-# to the PIDController constructors for the X and Y error controllers underneath
-# the PIDController class definition. 
+# PID control is a red circle that follows your cursor around the window. Clicking
+# the window starts a timer (with a minimum duration of 0.3 seconds) that ends when
+# both X and Y controllers have reached their setpoint (within position and velocity
+# tolerances), which is useful for (re)tuning the controller. To fill out the
+# template, implement the lines labeled TODO in PIDController's calculate method.
+# Then, tune the PID controllers you implemented by changing the arguments to the
+# PIDController constructors for the X and Y error controllers underneath the
+# PIDController class definition.
 
 import sys, pygame, math, time
 from pygame import draw, mouse, Vector2
@@ -78,42 +81,59 @@ class PIDController:
 pidx = PIDController(1, 0, 0)
 pidy = PIDController(1, 0, 0)
 
+# Simulation and display constants
+LOOP_INTERVAL = 0.02
+AXIS_LIMITS = (0, 5)
+WIDTH, HEIGHT = 640, 640
+MAX_ACCELERATION = 3
 
-size = width, height = 640, 640
-max_accel = 3
-background_color = 200, 200, 255
-circle_color = 255, 0, 0
-
-screen = pygame.display.set_mode(size)
-
-pos: Vector2 = Vector2(0, 0)
-target_pos = Vector2(mouse.get_pos())
-
+# Add error graph
 fig, ax = plt.subplots(1, 1)
+ax.set_title("Pixel error over time")
+ax.set_xlim(*AXIS_LIMITS)
+ax.set_ylim(*AXIS_LIMITS)
+ax.set_xlabel("Time (Y Error) | 1/2 Pixel Error (X Error)")
+ax.set_ylabel("1/2 Pixel Error (Y Error) | Time (X Error)")
+ax.invert_xaxis()
+ax.invert_yaxis()
 
-ax.set_xlim(-2.5, 2.5)
-ax.set_ylim(-2.5, 2.5)
+axis_mid = (AXIS_LIMITS[0] + AXIS_LIMITS[1]) / 2
+axis_size = AXIS_LIMITS[1] - AXIS_LIMITS[0]
+ax.hlines(axis_mid, AXIS_LIMITS[0], AXIS_LIMITS[1], 'lightgrey')
+ax.vlines(axis_mid, AXIS_LIMITS[0], AXIS_LIMITS[1], 'lightgrey')
 
-window_vals = [ (n*0.02) - 2.5 for n in range(251) ]
-x_err: deque[float] = deque([0]*251, maxlen=251)
-y_err: deque[float] = deque([0]*251, maxlen=251)
+error_window_size = round(axis_size / LOOP_INTERVAL) + 1
+error_window_vals = [ (n * LOOP_INTERVAL) + AXIS_LIMITS[0] for n in range(error_window_size) ]
+x_err: deque[float] = deque([axis_mid]*error_window_size, maxlen=error_window_size)
+y_err: deque[float] = deque([axis_mid]*error_window_size, maxlen=error_window_size)
 
-y_line, x_line = ax.plot(window_vals, y_err, 'b-', x_err, window_vals, 'r-')
-
+y_line, x_line = ax.plot(error_window_vals, y_err, 'b-', x_err, error_window_vals, 'r-')
+y_line.set_label("Y Error")
+x_line.set_label("X Error")
+ax.legend()
 
 def update_plt(frame):
-    x_line.set_data(x_err, window_vals)
-    y_line.set_data(window_vals, y_err)
+    x_line.set_data(x_err, error_window_vals)
+    y_line.set_data(error_window_vals, y_err)
     return x_line, y_line
 
 ani = anim.FuncAnimation(fig, update_plt, frames=len(x_err), interval=20, blit=True)
 
 plt.show(block=False)
 
+# Configure pygame
+background_color = 200, 200, 255
+circle_color = 255, 0, 0
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+
+# Initialize simulation
+pos: Vector2 = Vector2(0, 0)
+target_pos = Vector2(mouse.get_pos())
+
 prev_outx = 0
 prev_outy = 0
-
 last_time = -1
+
 
 while True:
     for event in pygame.event.get():
@@ -124,8 +144,8 @@ while True:
     outx = pidx.calculate(pos.x, target_pos.x)
     outy = pidy.calculate(pos.y, target_pos.y)
 
-    outx = clamp(outx, prev_outx - max_accel, prev_outx + max_accel)
-    outy = clamp(outy, prev_outy - max_accel, prev_outy + max_accel)
+    outx = clamp(outx, prev_outx - MAX_ACCELERATION, prev_outx + MAX_ACCELERATION)
+    outy = clamp(outy, prev_outy - MAX_ACCELERATION, prev_outy + MAX_ACCELERATION)
 
     pos.x += outx
     pos.y += outy
@@ -133,8 +153,8 @@ while True:
     prev_outx = outx
     prev_outy = outy
 
-    x_err.append(-pidx._prev_error / width * 2.5)
-    y_err.append(pidy._prev_error / height * 2.5)
+    x_err.append(-pidx._prev_error / WIDTH * axis_size / 2 + axis_mid)
+    y_err.append(pidy._prev_error / HEIGHT * axis_size / 2 + axis_mid)
 
     if pidx.at_setpoint():
         pidx.reset()
@@ -152,4 +172,4 @@ while True:
 
     target_pos = Vector2(mouse.get_pos())
 
-    sleep(0.02)
+    sleep(LOOP_INTERVAL)

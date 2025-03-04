@@ -10,6 +10,12 @@ The template for implementing a PID controller is in `pid_template.py`.
 
 ## Changelog
 
+### v1.2
+
+- Added axis titles
+- Modified axis labels to represent time properly
+- Added grey axis lines to more easily see error values
+
 ### v1.1
 
 - Added comments and rearranged statements to be more intuitive
